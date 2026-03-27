@@ -29,7 +29,7 @@ if [ -z "$LATEST" ]; then
 fi
 
 VERSION="${LATEST#v}"
-ARCHIVE="${BINARY}_${VERSION}_${OS}_${ARCH}.tar.gz"
+ARCHIVE="cli_${VERSION}_${OS}_${ARCH}.tar.gz"
 URL="https://github.com/${REPO}/releases/download/${LATEST}/${ARCHIVE}"
 
 echo "Installing ${BINARY} ${LATEST} (${OS}/${ARCH})..."
