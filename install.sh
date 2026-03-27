@@ -3,7 +3,15 @@ set -euo pipefail
 
 REPO="lpagent/cli"
 BINARY="lpagent"
-INSTALL_DIR="/usr/local/bin"
+INSTALL_DIR="${HOME}/.local/bin"
+
+# Colors
+GREEN='\033[32m'
+YELLOW='\033[33m'
+CYAN='\033[36m'
+RESET='\033[0m'
+
+echo ""
 
 # Detect OS and architecture
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -32,22 +40,38 @@ VERSION="${LATEST#v}"
 ARCHIVE="cli_${VERSION}_${OS}_${ARCH}.tar.gz"
 URL="https://github.com/${REPO}/releases/download/${LATEST}/${ARCHIVE}"
 
-echo "Installing ${BINARY} ${LATEST} (${OS}/${ARCH})..."
+echo -e "  → Downloading ${BINARY} ${CYAN}${LATEST}${RESET} for ${OS}_${ARCH}..."
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
 curl -fsSL "$URL" -o "${TMP}/${ARCHIVE}"
+
+echo "  → Extracting..."
 tar xzf "${TMP}/${ARCHIVE}" -C "$TMP"
 
-if [ -w "$INSTALL_DIR" ]; then
-  mv "${TMP}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
-else
-  sudo mv "${TMP}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+# Ensure install directory exists
+mkdir -p "$INSTALL_DIR"
+mv "${TMP}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+chmod +x "${INSTALL_DIR}/${BINARY}"
+
+echo -e "  ${GREEN}✓${RESET} Installed ${BINARY} ${LATEST} to ${INSTALL_DIR}/${BINARY}"
+
+# Check if INSTALL_DIR is in PATH
+if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
+  echo ""
+  echo -e "  ${YELLOW}⚠${RESET} ${INSTALL_DIR} is not in your PATH. Add it with:"
+  SHELL_NAME=$(basename "$SHELL")
+  case "$SHELL_NAME" in
+    zsh)  echo "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc && source ~/.zshrc" ;;
+    bash) echo "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc && source ~/.bashrc" ;;
+    *)    echo "    export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
+  esac
 fi
 
-echo "Installed ${BINARY} ${LATEST} to ${INSTALL_DIR}/${BINARY}"
 echo ""
-echo "Get started:"
-echo "  lpagent auth set-key"
-echo "  lpagent positions open --owner <wallet> -o table"
+echo "  Next steps:"
+echo -e "    ${CYAN}lpagent auth set-key${RESET}                          Set your API key"
+echo -e "    ${CYAN}lpagent auth set-default-owner <wallet>${RESET}       Set default wallet"
+echo -e "    ${CYAN}lpagent positions open -o table --native${RESET}      View open positions"
+echo ""

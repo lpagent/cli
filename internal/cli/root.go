@@ -28,15 +28,15 @@ transaction generation for Solana DeFi protocols.
 
 Get started:
   lpagent auth set-key              Set your API key
-  lpagent positions opening --owner <wallet>  View open positions
+  lpagent positions open --owner <wallet>  View open positions
   lpagent pools discover            Discover pools`,
 		Version:                    fmt.Sprintf("%s (commit: %s, built: %s)", version.Version, version.Commit, version.Date),
 		SilenceUsage:               true,
 		SilenceErrors:              true,
 		SuggestionsMinimumDistance: 2,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// Skip auth setup for auth commands and version/help
-			if isAuthCommand(cmd) || cmd.Name() == "version" || cmd.Name() == "help" {
+			// Skip auth setup for auth/upgrade commands and version/help
+			if isSkipAuthCommand(cmd) {
 				return nil
 			}
 
@@ -65,13 +65,15 @@ Get started:
 	cmd.AddCommand(commands.NewTokenCmd())
 	cmd.AddCommand(commands.NewTxCmd())
 	cmd.AddCommand(commands.NewAPICmd())
+	cmd.AddCommand(commands.NewUpgradeCmd())
 
 	return cmd
 }
 
-func isAuthCommand(cmd *cobra.Command) bool {
+func isSkipAuthCommand(cmd *cobra.Command) bool {
 	for c := cmd; c != nil; c = c.Parent() {
-		if c.Name() == "auth" {
+		switch c.Name() {
+		case "auth", "upgrade", "version", "help":
 			return true
 		}
 	}
@@ -79,7 +81,20 @@ func isAuthCommand(cmd *cobra.Command) bool {
 }
 
 func Execute() {
-	if err := newRootCmd().Execute(); err != nil {
+	// Start background update check
+	uc := commands.StartUpdateCheck()
+
+	rootCmd := newRootCmd()
+	err := rootCmd.Execute()
+
+	// Print update notice after command output
+	if uc != nil {
+		if notice := uc.Notice(); notice != "" {
+			fmt.Fprint(os.Stderr, notice)
+		}
+	}
+
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		os.Exit(1)
 	}
