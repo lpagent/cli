@@ -31,8 +31,8 @@ func newTxDecreaseQuotesCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "decrease-quotes",
-		Short: "Get quotes for withdrawing liquidity from a position",
+		Use:     "decrease-quotes",
+		Short:   "Get quotes for withdrawing liquidity from a position",
 		Example: `  lpagent tx decrease-quotes --id <encrypted-position-id> --bps 5000`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if id == "" {

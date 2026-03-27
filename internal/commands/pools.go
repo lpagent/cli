@@ -164,9 +164,9 @@ func newPoolsDiscoverCmd() *cobra.Command {
 
 func newPoolsInfoCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "info <poolId>",
-		Short: "Get detailed information for a pool",
-		Args:  cobra.ExactArgs(1),
+		Use:     "info <poolId>",
+		Short:   "Get detailed information for a pool",
+		Args:    cobra.ExactArgs(1),
 		Example: `  lpagent pools info 2DeF1QHAQMpNXCGjcsm2pWw1V4KknGtwd2wEh2fTriKC`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -254,9 +254,9 @@ func newPoolsPositionsCmd() *cobra.Command {
 
 func newPoolsOnchainStatsCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "onchain-stats <poolId>",
-		Short: "Get onchain statistics for a pool",
-		Args:  cobra.ExactArgs(1),
+		Use:     "onchain-stats <poolId>",
+		Short:   "Get onchain statistics for a pool",
+		Args:    cobra.ExactArgs(1),
 		Example: `  lpagent pools onchain-stats 2DeF1QHAQMpNXCGjcsm2pWw1V4KknGtwd2wEh2fTriKC`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -274,9 +274,9 @@ func newPoolsOnchainStatsCmd() *cobra.Command {
 
 func newPoolsTopLPersCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "top-lpers <poolId>",
-		Short: "Get top liquidity providers for a pool",
-		Args:  cobra.ExactArgs(1),
+		Use:     "top-lpers <poolId>",
+		Short:   "Get top liquidity providers for a pool",
+		Args:    cobra.ExactArgs(1),
 		Example: `  lpagent pools top-lpers 2DeF1QHAQMpNXCGjcsm2pWw1V4KknGtwd2wEh2fTriKC -o table`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())

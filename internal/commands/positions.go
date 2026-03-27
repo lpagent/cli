@@ -488,8 +488,8 @@ func newPositionsGetCmd() *cobra.Command {
 	var position string
 
 	cmd := &cobra.Command{
-		Use:   "get",
-		Short: "Get details for a specific position",
+		Use:     "get",
+		Short:   "Get details for a specific position",
 		Example: `  lpagent positions get --position Ep22EwKegXis3bTC6P8JLgsHaT5J2beM2TncKe2Hmv24`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if position == "" {

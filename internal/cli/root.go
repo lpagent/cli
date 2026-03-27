@@ -30,9 +30,9 @@ Get started:
   lpagent auth set-key              Set your API key
   lpagent positions opening --owner <wallet>  View open positions
   lpagent pools discover            Discover pools`,
-		Version:               fmt.Sprintf("%s (commit: %s, built: %s)", version.Version, version.Commit, version.Date),
-		SilenceUsage:          true,
-		SilenceErrors:         true,
+		Version:                    fmt.Sprintf("%s (commit: %s, built: %s)", version.Version, version.Commit, version.Date),
+		SilenceUsage:               true,
+		SilenceErrors:              true,
 		SuggestionsMinimumDistance: 2,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Skip auth setup for auth commands and version/help

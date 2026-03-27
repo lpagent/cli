@@ -14,8 +14,8 @@ type Column struct {
 }
 
 type TableOptions struct {
-	Columns    []Column
-	RowFunc    func(row map[string]any) []string
+	Columns     []Column
+	RowFunc     func(row map[string]any) []string
 	SummaryFunc func(rows []map[string]any) string
 }
 
