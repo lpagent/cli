@@ -19,10 +19,53 @@ triggers:
   - LP Agent
 ---
 
-# LP Agent CLI
+# LP Agent
 
 A command-line interface for the LP Agent Open API. Manages Solana LP positions,
 discovers pools, and generates transactions for adding/removing liquidity.
+
+## Installation
+
+### Quick install (macOS / Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lpagent/cli/main/install.sh | bash
+```
+
+This detects your OS and architecture, downloads the latest release from GitHub,
+and places the `lpagent` binary at `~/.local/bin/lpagent`. If `~/.local/bin` is
+not in your `PATH`, the script will print instructions to add it.
+
+### Go install
+
+```bash
+go install github.com/lpagent/cli/cmd/lpagent@latest
+```
+
+### Build from source
+
+```bash
+git clone https://github.com/lpagent/cli.git && cd cli
+make build
+./bin/lpagent --help
+```
+
+### Windows
+
+Download the latest `.zip` from [GitHub Releases](https://github.com/lpagent/cli/releases)
+and add the binary to your `PATH`.
+
+### Verify installation
+
+```bash
+lpagent --version
+```
+
+### Upgrade
+
+```bash
+lpagent upgrade
+```
 
 ## Authentication
 
