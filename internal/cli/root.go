@@ -66,6 +66,7 @@ Get started:
 	cmd.AddCommand(commands.NewTxCmd())
 	cmd.AddCommand(commands.NewAPICmd())
 	cmd.AddCommand(commands.NewUpgradeCmd())
+	cmd.AddCommand(commands.NewUninstallCmd())
 
 	return cmd
 }
@@ -73,7 +74,7 @@ Get started:
 func isSkipAuthCommand(cmd *cobra.Command) bool {
 	for c := cmd; c != nil; c = c.Parent() {
 		switch c.Name() {
-		case "auth", "upgrade", "version", "help":
+		case "auth", "upgrade", "uninstall", "version", "help":
 			return true
 		}
 	}

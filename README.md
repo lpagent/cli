@@ -94,6 +94,14 @@ Config stored at `~/.lpagent/config.json`. Override with env vars or CLI flags:
 
 Priority: CLI flags > env vars > config file.
 
+## Uninstall
+
+```bash
+lpagent uninstall
+```
+
+This removes the binary and the `~/.lpagent` config directory. Pass `-y` to skip the confirmation prompt.
+
 ## Development
 
 ```bash
