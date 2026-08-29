@@ -1,6 +1,6 @@
 # LP Agent CLI
 
-`lpagent` is the command-line interface for [LP Agent](https://lpagent.io). Manage Solana LP positions, discover pools, and generate liquidity transactions from your terminal or through AI agents.
+`lpagent` is the command-line interface for [LP Agent](https://lpagent.io). Manage LP positions on Solana (Meteora, Orca) and the Robinhood chain (Uniswap v3/v4), discover pools, and generate liquidity transactions from your terminal or through AI agents.
 
 - Works standalone or as a Claude agent skill
 - Single binary, no runtime dependencies
@@ -49,21 +49,23 @@ lpagent positions open -o table --native                       # Table view in S
 lpagent positions historical --owner <addr> --from 2025-01-01  # Closed positions
 lpagent positions overview -o table --native                   # Portfolio metrics
 lpagent positions logs --position <id>                         # Transaction logs
+lpagent positions logs --chain ROBINHOOD --owner <0xaddr>      # Logs for a Robinhood wallet
 lpagent positions get --position <id>                          # Position details
 lpagent positions revenue <addr>                               # Revenue data
 
 # Pools
-lpagent pools discover --chain SOL --sort-by tvl               # Discover pools
+lpagent pools discover --chain SOL --sort-by tvl               # Discover pools (Solana)
+lpagent pools discover --chain ROBINHOOD --sort-by tvl         # Discover Uniswap v3/v4 pools on Robinhood
 lpagent pools info <poolId>                                    # Pool details
 lpagent pools positions <poolId> --status Open                 # Positions in a pool
 lpagent pools onchain-stats <poolId>                           # TVL, volume, fees
 lpagent pools top-lpers <poolId>                               # Top LPs
 
-# Zap-In (add liquidity)
+# Zap-In (add liquidity) — Solana only
 lpagent pools add-tx <poolId> --owner <addr> --strategy Spot --input-sol 1
 lpagent pools landing-add-tx --file signed-tx.json
 
-# Zap-Out (remove liquidity)
+# Zap-Out (remove liquidity) — Solana only
 lpagent tx decrease-quotes --id <id> --bps 10000
 lpagent tx decrease-tx --position-id <id> --bps 10000 --owner <addr> --slippage-bps 500
 lpagent tx landing-decrease-tx --file signed-tx.json
@@ -76,11 +78,21 @@ lpagent api get /lp-positions/opening --query "owner=<addr>"
 lpagent api post /position/decrease-quotes --data '{"id":"...","bps":5000}'
 ```
 
+## Chains
+
+| Chain | `--chain` | Protocols | Native token |
+|-----------|-------------|-------------------------------------|--------------|
+| Solana | `SOL` (default) | Meteora DLMM, Meteora DAMM v2, Orca | SOL |
+| Robinhood | `ROBINHOOD` | Uniswap v3, Uniswap v4 | ETH |
+
+`pools discover` and `positions logs` accept `--chain`. All other commands are Solana only for now.
+See the [chain support matrix](https://docs.lpagent.io/ai-api-guide#chain-support-matrix).
+
 ## Output Formats
 
 All commands support `--output` / `-o`: `json` (default), `table`, `quiet`.
 
-Use `--native` on `positions open` and `positions overview` to show values in SOL instead of USD.
+Use `--native` on `positions open` and `positions overview` to show values in the native token (SOL on Solana, ETH on Robinhood) instead of USD.
 
 ## Configuration
 

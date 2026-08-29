@@ -1,15 +1,18 @@
 ---
 name: lpagent
 description: |
-  LP Agent CLI — query and manage Solana liquidity pool positions, discover pools,
-  check token balances, and generate add/remove liquidity transactions via the
-  LP Agent Open API.
+  LP Agent CLI — query and manage liquidity pool positions on Solana (Meteora, Orca)
+  and the Robinhood chain (Uniswap v3/v4), discover pools, check token balances,
+  and generate add/remove liquidity transactions via the LP Agent Open API.
 triggers:
   - LP positions
   - liquidity pool
   - pool discovery
   - DeFi portfolio
   - Solana LP
+  - Robinhood LP
+  - Uniswap v4
+  - EVM LP
   - meteora positions
   - zap-in
   - zap-out
@@ -21,8 +24,28 @@ triggers:
 
 # LP Agent
 
-A command-line interface for the LP Agent Open API. Manages Solana LP positions,
+A command-line interface for the LP Agent Open API. Manages LP positions on Solana
+(Meteora DLMM / DAMM v2, Orca) and on the Robinhood chain (Uniswap v3 / v4),
 discovers pools, and generates transactions for adding/removing liquidity.
+
+## Chains
+
+| Chain | `--chain` value | Protocols | Native token | Address / position id |
+| --- | --- | --- | --- | --- |
+| Solana | `SOL` (default) | Meteora DLMM, Meteora DAMM v2, Orca | SOL | base58 pubkey / position pubkey |
+| Robinhood | `ROBINHOOD` | Uniswap v3, Uniswap v4 | ETH | `0x…` hex / NFT `tokenId` |
+
+Chain-aware commands today: `pools discover` and `positions logs`. Every other
+command (`positions open/historical/overview/get/revenue`, `pools info/positions/
+onchain-stats/top-lpers`, `token balance`, and all add-tx / decrease-tx /
+claim-fee / landing commands) is **Solana only** — do not pass a Robinhood
+address to them. Native values are SOL on Solana and ETH on Robinhood.
+
+```bash
+lpagent pools discover --chain ROBINHOOD --sort-by tvl -o table
+lpagent positions logs --chain ROBINHOOD --owner 0xYourWallet
+lpagent api get /pools/discover --query "chain=ROBINHOOD&sortBy=tvl"
+```
 
 ## Installation
 
@@ -108,6 +131,7 @@ lpagent token balance --owner <wallet> --ca So1111111111111111111111111111111111
 ### Discover pools
 ```bash
 lpagent pools discover --chain SOL --sort-by tvl -o table
+lpagent pools discover --chain ROBINHOOD --sort-by tvl -o table
 lpagent pools discover --search "SOL" --min-liquidity 10000
 ```
 
@@ -118,12 +142,18 @@ lpagent pools onchain-stats <poolId>
 lpagent pools top-lpers <poolId>
 ```
 
-### Generate add liquidity transaction (Zap-In)
+### View position activity logs
+```bash
+lpagent positions logs --position <id>
+lpagent positions logs --chain ROBINHOOD --owner 0xYourWallet
+```
+
+### Generate add liquidity transaction (Zap-In) — Solana only
 ```bash
 lpagent pools add-tx <poolId> --owner <wallet> --strategy Spot --input-sol 1
 ```
 
-### Generate remove liquidity transaction (Zap-Out)
+### Generate remove liquidity transaction (Zap-Out) — Solana only
 ```bash
 lpagent tx decrease-quotes --id <encrypted-position-id> --bps 10000
 lpagent tx decrease-tx --position-id <id> --bps 10000 --owner <wallet> --slippage-bps 500
