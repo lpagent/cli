@@ -124,15 +124,18 @@ lpagent pools add-tx <poolId> --owner <wallet> --strategy Spot --input-sol 1
 ```
 
 ### Generate remove liquidity transaction (Zap-Out)
+Estimate first: `zap-out-estimates` returns, per output option (allToken0, allToken1,
+both, allBaseToken), what the wallet ends up with after the swap and LP Agent's fee,
+priced on the same route `decrease-tx` uses. Pick the `--output-type` from it.
 ```bash
-lpagent tx decrease-quotes --id <encrypted-position-id> --bps 10000
-lpagent tx decrease-tx --position-id <id> --bps 10000 --owner <wallet> --slippage-bps 500
+lpagent tx zap-out-estimates --position-id <id> --bps 10000
+lpagent tx decrease-tx --position-id <id> --bps 10000 --owner <wallet> --slippage-bps 500 --output-type allToken1
 ```
 
 ### Raw API access
 ```bash
 lpagent api get /lp-positions/opening --query "owner=<wallet>"
-lpagent api post /position/decrease-quotes --data '{"id":"...","bps":5000}'
+lpagent api post /position/zap-out-estimates --data '{"position_id":"...","bps":5000}'
 ```
 
 ## Output Formats
