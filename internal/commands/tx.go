@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -16,7 +18,7 @@ func NewTxCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		newTxDecreaseQuotesCmd(),
+		newTxZapOutEstimatesCmd(),
 		newTxDecreaseTxCmd(),
 		newTxLandingDecreaseTxCmd(),
 	)
@@ -24,43 +26,138 @@ func NewTxCmd() *cobra.Command {
 	return cmd
 }
 
-func newTxDecreaseQuotesCmd() *cobra.Command {
+func newTxZapOutEstimatesCmd() *cobra.Command {
 	var (
-		id  string
-		bps int
+		positionId string
+		id         string
+		bps        int
+		payouts    []string
 	)
 
 	cmd := &cobra.Command{
-		Use:     "decrease-quotes",
-		Short:   "Get quotes for withdrawing liquidity from a position",
-		Example: `  lpagent tx decrease-quotes --id <encrypted-position-id> --bps 5000`,
+		Use: "zap-out-estimates",
+		// The endpoint this replaced; kept so scripts and agent skills that still
+		// call it land on the new estimate instead of an unknown command.
+		Aliases: []string{"decrease-quotes"},
+		Short:   "Estimate what withdrawing liquidity pays out, per output option",
+		Long: `Estimates each decrease-tx output option (allToken0, allToken1, both, allBaseToken):
+what the wallet ends up with after the swap and LP Agent's fee, priced on the
+same route decrease-tx uses, plus the market value / swap cost / fee split.
+Run it before decrease-tx to see the real payout. Meteora DLMM only.`,
+		Example: `  lpagent tx zap-out-estimates --position-id <id> --bps 10000
+  lpagent tx zap-out-estimates --position-id <id> --bps 10000 --payouts allToken1 -o table`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if id == "" {
-				return fmt.Errorf("--id is required (encrypted position ID)")
+			if positionId == "" && id == "" {
+				return fmt.Errorf("--position-id (or --id, the encrypted position ID) is required")
+			}
+			if bps < 1 || bps > 10000 {
+				return fmt.Errorf("--bps must be between 1 and 10000")
 			}
 
 			app := appctx.FromContext(cmd.Context())
 
-			body := map[string]any{
-				"id":  id,
-				"bps": bps,
+			body := map[string]any{"bps": bps}
+			if positionId != "" {
+				body["position_id"] = positionId
+			} else {
+				body["id"] = id
+			}
+			if len(payouts) > 0 {
+				body["outputs"] = payouts
 			}
 
-			data, err := app.Client.Post("/position/decrease-quotes", body)
+			data, err := app.Client.Post("/position/zap-out-estimates", body)
 			if err != nil {
 				return err
 			}
 
+			if app.Format == "table" {
+				printZapOutEstimates(data)
+				return nil
+			}
 			output.Print(data, app.Format, nil)
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&id, "id", "", "Encrypted position ID (required)")
-	cmd.Flags().IntVar(&bps, "bps", 0, "Basis points to decrease (0-10000, required)")
-	_ = cmd.MarkFlagRequired("bps")
+	cmd.Flags().StringVar(&positionId, "position-id", "", "Position ID, as passed to decrease-tx")
+	cmd.Flags().StringVar(&id, "id", "", "Encrypted position ID (alternative to --position-id)")
+	cmd.Flags().IntVar(&bps, "bps", 10000, "Basis points to withdraw (1-10000); 10000 closes the position")
+	cmd.Flags().StringSliceVar(&payouts, "payouts", nil, "Only these output options: allToken0, allToken1, both, allBaseToken")
 
 	return cmd
+}
+
+type zapOutEstimate struct {
+	Output  string `json:"output"`
+	Ok      bool   `json:"ok"`
+	Error   string `json:"error"`
+	Receive []struct {
+		Address  string  `json:"address"`
+		UIAmount float64 `json:"uiAmount"`
+	} `json:"receive"`
+	ValueUsd       float64  `json:"valueUsd"`
+	MarketValueUsd float64  `json:"marketValueUsd"`
+	CommissionUsd  float64  `json:"commissionUsd"`
+	SwapCostUsd    float64  `json:"swapCostUsd"`
+	PriceImpactPct *float64 `json:"priceImpactPct"`
+}
+
+func printZapOutEstimates(data []byte) {
+	var envelope struct {
+		Data struct {
+			Estimates []zapOutEstimate `json:"estimates"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil || len(envelope.Data.Estimates) == 0 {
+		output.Print(data, "json", nil)
+		return
+	}
+
+	columns := []output.Column{
+		{Header: "OUTPUT"},
+		{Header: "YOU GET"},
+		{Header: "VALUE"},
+		{Header: "MARKET"},
+		{Header: "SWAP COST"},
+		{Header: "FEE"},
+		{Header: "IMPACT"},
+	}
+	var rows [][]string
+	for _, e := range envelope.Data.Estimates {
+		if !e.Ok {
+			rows = append(rows, []string{e.Output, "unavailable: " + e.Error})
+			continue
+		}
+		var parts []string
+		for _, r := range e.Receive {
+			parts = append(parts, fmt.Sprintf("%.6g %s", r.UIAmount, shortAddr(r.Address)))
+		}
+		impact := "-"
+		if e.PriceImpactPct != nil {
+			impact = fmt.Sprintf("%.2f%%", *e.PriceImpactPct)
+		}
+		rows = append(rows, []string{
+			e.Output,
+			strings.Join(parts, " + "),
+			fmt.Sprintf("$%.2f", e.ValueUsd),
+			fmt.Sprintf("$%.2f", e.MarketValueUsd),
+			fmt.Sprintf("$%.2f", e.SwapCostUsd),
+			fmt.Sprintf("$%.2f", e.CommissionUsd),
+			impact,
+		})
+	}
+	output.PrintRows(columns, rows)
+}
+
+func shortAddr(address string) string {
+	if address == "So11111111111111111111111111111111111111112" {
+		return "SOL"
+	}
+	if len(address) <= 10 {
+		return address
+	}
+	return address[:4] + "..." + address[len(address)-4:]
 }
 
 func newTxDecreaseTxCmd() *cobra.Command {

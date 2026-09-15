@@ -64,7 +64,7 @@ lpagent pools add-tx <poolId> --owner <addr> --strategy Spot --input-sol 1
 lpagent pools landing-add-tx --file signed-tx.json
 
 # Zap-Out (remove liquidity)
-lpagent tx decrease-quotes --id <id> --bps 10000
+lpagent tx zap-out-estimates --position-id <id> --bps 10000   # real payout per output option, after swap + fee
 lpagent tx decrease-tx --position-id <id> --bps 10000 --owner <addr> --slippage-bps 500
 lpagent tx landing-decrease-tx --file signed-tx.json
 
@@ -73,7 +73,7 @@ lpagent token balance --owner <addr>
 
 # Raw API access
 lpagent api get /lp-positions/opening --query "owner=<addr>"
-lpagent api post /position/decrease-quotes --data '{"id":"...","bps":5000}'
+lpagent api post /position/zap-out-estimates --data '{"position_id":"...","bps":5000}'
 ```
 
 ## Output Formats
