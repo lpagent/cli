@@ -24,7 +24,7 @@ func NewAPICmd() *cobra.Command {
 Supports GET, POST, PUT, DELETE methods.`,
 		Args: cobra.ExactArgs(2),
 		Example: `  lpagent api get /lp-positions/opening --query "owner=9WzDX..."
-  lpagent api post /position/decrease-quotes --data '{"id":"...","bps":5000}'
+  lpagent api post /position/zap-out-estimates --data '{"position_id":"...","bps":5000}'
   lpagent api get /pools/discover --query "chain=SOL&sortBy=tvl"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			method := strings.ToUpper(args[0])
