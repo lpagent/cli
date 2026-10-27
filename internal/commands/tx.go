@@ -41,9 +41,9 @@ func newTxZapOutEstimatesCmd() *cobra.Command {
 		Aliases: []string{"decrease-quotes"},
 		Short:   "Estimate what withdrawing liquidity pays out, per output option",
 		Long: `Estimates each decrease-tx output option (allToken0, allToken1, both, allBaseToken):
-what the wallet ends up with after the swap and LP Agent's fee, priced on the
-same route decrease-tx uses, plus the market value / swap cost / fee split.
-Run it before decrease-tx to see the real payout. Meteora DLMM only.`,
+what the wallet ends up with after the swap and fees, priced on the same route
+decrease-tx uses, next to the same withdrawal valued at the pool price before any
+swap. Run it before decrease-tx to see the real payout. Meteora DLMM only.`,
 		Example: `  lpagent tx zap-out-estimates --position-id <id> --bps 10000
   lpagent tx zap-out-estimates --position-id <id> --bps 10000 --payouts allToken1 -o table`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -98,8 +98,6 @@ type zapOutEstimate struct {
 	} `json:"receive"`
 	ValueUsd       float64  `json:"valueUsd"`
 	MarketValueUsd float64  `json:"marketValueUsd"`
-	CommissionUsd  float64  `json:"commissionUsd"`
-	SwapCostUsd    float64  `json:"swapCostUsd"`
 	PriceImpactPct *float64 `json:"priceImpactPct"`
 }
 
@@ -119,8 +117,7 @@ func printZapOutEstimates(data []byte) {
 		{Header: "YOU GET"},
 		{Header: "VALUE"},
 		{Header: "MARKET"},
-		{Header: "SWAP COST"},
-		{Header: "FEE"},
+		{Header: "EXIT COST"},
 		{Header: "IMPACT"},
 	}
 	var rows [][]string
@@ -142,8 +139,9 @@ func printZapOutEstimates(data []byte) {
 			strings.Join(parts, " + "),
 			fmt.Sprintf("$%.2f", e.ValueUsd),
 			fmt.Sprintf("$%.2f", e.MarketValueUsd),
-			fmt.Sprintf("$%.2f", e.SwapCostUsd),
-			fmt.Sprintf("$%.2f", e.CommissionUsd),
+			// The estimate gives the payout and the pool-price value, not a split
+			// of what lies between them: swap and fees show up as one total.
+			fmt.Sprintf("$%.2f", e.MarketValueUsd-e.ValueUsd),
 			impact,
 		})
 	}
