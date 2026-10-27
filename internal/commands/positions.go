@@ -305,7 +305,7 @@ func newPositionsHistoricalCmd() *cobra.Command {
 				params["page"] = strconv.Itoa(page)
 			}
 			if limit > 0 {
-				params["limit"] = strconv.Itoa(limit)
+				params["pageSize"] = strconv.Itoa(limit)
 			}
 
 			data, err := app.Client.Get("/lp-positions/historical", params)
