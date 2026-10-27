@@ -58,6 +58,7 @@ func newPoolsDiscoverCmd() *cobra.Command {
 		Short: "Discover and filter liquidity pools",
 		Example: `  lpagent pools discover
   lpagent pools discover --chain SOL --sort-by tvl --page-size 20 -o table
+  lpagent pools discover --chain ROBINHOOD --sort-by tvl -o table
   lpagent pools discover --search "SOL" --min-liquidity 10000`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -137,7 +138,7 @@ func newPoolsDiscoverCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network")
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network: SOL or ROBINHOOD")
 	cmd.Flags().StringVar(&sortBy, "sort-by", "mcap", "Sort by: mcap, created_at, vol_24h, tvl, fee_tvl_ratio, volatility")
 	cmd.Flags().StringVar(&sortOrder, "sort-order", "desc", "Sort order: asc, desc")
 	cmd.Flags().IntVar(&page, "page", 1, "Page number")

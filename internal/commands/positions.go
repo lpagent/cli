@@ -86,7 +86,7 @@ func newPositionsOpeningCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&owner, "owner", "", "Wallet address of the position owner")
-	cmd.Flags().BoolVar(&native, "native", false, "Show values in native token (SOL) instead of USD")
+	cmd.Flags().BoolVar(&native, "native", false, "Show values in native token (SOL on Solana, ETH on Robinhood) instead of USD")
 	return cmd
 }
 
@@ -357,7 +357,7 @@ func newPositionsOverviewCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&owner, "owner", "", "Wallet address")
 	cmd.Flags().StringVar(&protocol, "protocol", "meteora", "Protocol filter")
-	cmd.Flags().BoolVar(&native, "native", false, "Show values in native token (SOL) instead of USD")
+	cmd.Flags().BoolVar(&native, "native", false, "Show values in native token (SOL on Solana, ETH on Robinhood) instead of USD")
 	return cmd
 }
 
@@ -479,7 +479,7 @@ func newPositionsLogsCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&position, "position", "", "Position ID (token ID)")
-	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain chain")
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain chain: SOL or ROBINHOOD")
 	cmd.Flags().StringVar(&owner, "owner", "", "Wallet address")
 	return cmd
 }
