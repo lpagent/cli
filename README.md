@@ -46,6 +46,7 @@ make build
 # Positions
 lpagent positions open --owner <addr>                          # Open positions
 lpagent positions open -o table --native                       # Table view in SOL
+lpagent positions open --chain ROBINHOOD --owner <0xaddr>      # Open positions on Robinhood
 lpagent positions historical --owner <addr> --from 2025-01-01  # Closed positions
 lpagent positions overview -o table --native                   # Portfolio metrics
 lpagent positions logs --position <id>                         # Transaction logs
@@ -61,7 +62,7 @@ lpagent pools positions <poolId> --status Open                 # Positions in a 
 lpagent pools onchain-stats <poolId>                           # TVL, volume, fees
 lpagent pools top-lpers <poolId>                               # Top LPs
 
-# Zap-In (add liquidity) — Solana only
+# Zap-In (add liquidity) - Solana only
 lpagent pools add-tx <poolId> --owner <addr> --strategy Spot --input-sol 1
 lpagent pools landing-add-tx --file signed-tx.json
 
@@ -70,8 +71,13 @@ lpagent tx zap-out-estimates --position-id <id> --bps 10000   # real payout per 
 lpagent tx decrease-tx --position-id <id> --bps 10000 --owner <addr> --slippage-bps 500
 lpagent tx landing-decrease-tx --file signed-tx.json
 
+# Claim fees (position stays open) - Solana only
+lpagent tx claim-fee-tx --position-id <id> --owner <addr>                 # add --swap-to-sol to get the fees in SOL
+lpagent tx landing-claim-fee-tx --file signed-tx.json
+
 # Token
 lpagent token balance --owner <addr>
+lpagent token balance --chain ROBINHOOD --owner <0xaddr>
 
 # Raw API access
 lpagent api get /lp-positions/opening --query "owner=<addr>"
@@ -85,8 +91,13 @@ lpagent api post /position/zap-out-estimates --data '{"position_id":"...","bps":
 | Solana | `SOL` (default) | Meteora DLMM, Meteora DAMM v2, Orca | SOL |
 | Robinhood | `ROBINHOOD` | Uniswap v3, Uniswap v4 | ETH |
 
-`pools discover` and `positions logs` accept `--chain`. All other commands are Solana only for now.
-See the [chain support matrix](https://docs.lpagent.io/ai-api-guide#chain-support-matrix).
+Read commands take `--chain SOL` (default) or `--chain ROBINHOOD`: `positions open`, `historical`,
+`overview`, `logs` and `revenue`, `token balance`, `pools discover` and `pools positions`.
+`positions get`, `pools onchain-stats` and `pools top-lpers` read the chain from the id you pass.
+
+`pools info` and every command that builds or sends a transaction (`add-tx`, `zap-out-estimates`,
+`decrease-tx`, `claim-fee-tx` and their `landing-` commands) are Solana only.
+See [Chain Support](https://docs.lpagent.io/ai-api-guide#chain-support).
 
 ## Output Formats
 

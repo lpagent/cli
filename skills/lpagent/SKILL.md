@@ -1,7 +1,7 @@
 ---
 name: lpagent
 description: |
-  LP Agent CLI — query and manage liquidity pool positions on Solana (Meteora, Orca)
+  LP Agent CLI - query and manage liquidity pool positions on Solana (Meteora, Orca)
   and the Robinhood chain (Uniswap v3/v4), discover pools, check token balances,
   and generate add/remove liquidity transactions via the LP Agent Open API.
 triggers:
@@ -18,6 +18,7 @@ triggers:
   - zap-out
   - add liquidity
   - remove liquidity
+  - claim fees
   - token balance
   - LP Agent
 ---
@@ -35,16 +36,21 @@ discovers pools, and generates transactions for adding/removing liquidity.
 | Solana | `SOL` (default) | Meteora DLMM, Meteora DAMM v2, Orca | SOL | base58 pubkey / position pubkey |
 | Robinhood | `ROBINHOOD` | Uniswap v3, Uniswap v4 | ETH | `0x…` hex / NFT `tokenId` |
 
-Chain-aware commands today: `pools discover` and `positions logs`. Every other
-command (`positions open/historical/overview/get/revenue`, `pools info/positions/
-onchain-stats/top-lpers`, `token balance`, and all add-tx / decrease-tx /
-claim-fee / landing commands) is **Solana only** — do not pass a Robinhood
-address to them. Native values are SOL on Solana and ETH on Robinhood.
+Read commands take `--chain` (`SOL` by default): `positions open/historical/
+overview/logs/revenue`, `token balance`, `pools discover` and `pools positions`.
+Pass `--chain ROBINHOOD` with a `0x` wallet or pool, or the lookup runs on Solana.
+`positions get`, `pools onchain-stats` and `pools top-lpers` read the chain from
+the id itself. Native values are SOL on Solana and ETH on Robinhood.
+
+`pools info` and every transaction command (`add-tx`, `zap-out-estimates`,
+`decrease-tx`, `claim-fee-tx` and the `landing-` ones) are **Solana only**: do not
+pass a Robinhood address to them.
 
 ```bash
 lpagent pools discover --chain ROBINHOOD --sort-by tvl -o table
+lpagent positions open --chain ROBINHOOD --owner 0xYourWallet -o table --native
 lpagent positions logs --chain ROBINHOOD --owner 0xYourWallet
-lpagent api get /pools/discover --query "chain=ROBINHOOD&sortBy=tvl"
+lpagent token balance --chain ROBINHOOD --owner 0xYourWallet
 ```
 
 ## Installation
@@ -148,7 +154,7 @@ lpagent positions logs --position <id>
 lpagent positions logs --chain ROBINHOOD --owner 0xYourWallet
 ```
 
-### Generate add liquidity transaction (Zap-In) — Solana only
+### Generate add liquidity transaction (Zap-In) - Solana only
 ```bash
 lpagent pools add-tx <poolId> --owner <wallet> --strategy Spot --input-sol 1
 ```
@@ -162,6 +168,16 @@ lpagent tx zap-out-estimates --position-id <id> --bps 10000
 lpagent tx decrease-tx --position-id <id> --bps 10000 --owner <wallet> --slippage-bps 500 --output-type allToken1
 ```
 
+### Claim fees without closing the position - Solana only
+`claim-fee-tx` returns `claimTxsWithJito` (and `swapTxsWithJito` with `--swap-to-sol`,
+which turns the claimed fees into SOL). Sign them, keep `lastValidBlockHeight`, and
+submit the same JSON shape with `landing-claim-fee-tx`.
+```bash
+lpagent tx claim-fee-tx --position-id <id> --owner <wallet>
+lpagent tx claim-fee-tx --position-id <id> --owner <wallet> --swap-to-sol --slippage-bps 300
+lpagent tx landing-claim-fee-tx --file signed-tx.json
+```
+
 ### Raw API access
 ```bash
 lpagent api get /lp-positions/opening --query "owner=<wallet>"
@@ -171,12 +187,12 @@ lpagent api post /position/zap-out-estimates --data '{"position_id":"...","bps":
 ## Output Formats
 
 All commands support `--output` / `-o` flag:
-- `json` (default) — full JSON response, best for piping and AI agents
-- `table` — human-readable table format
-- `quiet` — IDs only, one per line
+- `json` (default): full JSON response, best for piping and AI agents
+- `table`: human-readable table format
+- `quiet`: IDs only, one per line
 
 ## Environment Variables
 
-- `LPAGENT_API_KEY` — API key (overrides config file)
-- `LPAGENT_API_URL` — Base URL (overrides default)
-- `LPAGENT_DEFAULT_OWNER` — Default wallet owner
+- `LPAGENT_API_KEY`: API key (overrides config file)
+- `LPAGENT_API_URL`: Base URL (overrides default)
+- `LPAGENT_DEFAULT_OWNER`: Default wallet owner
