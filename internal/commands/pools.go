@@ -186,6 +186,7 @@ func newPoolsInfoCmd() *cobra.Command {
 func newPoolsPositionsCmd() *cobra.Command {
 	var (
 		owner     string
+		chain     string
 		status    string
 		page      int
 		pageSize  int
@@ -203,7 +204,9 @@ func newPoolsPositionsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 
-			params := map[string]string{}
+			params := map[string]string{
+				"chain": chain,
+			}
 			if owner != "" {
 				params["owner"] = owner
 			}
@@ -243,6 +246,7 @@ func newPoolsPositionsCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&owner, "owner", "", "Filter by wallet address")
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network: SOL or ROBINHOOD")
 	cmd.Flags().StringVar(&status, "status", "", "Filter by status: Open, Close")
 	cmd.Flags().IntVar(&page, "page", 0, "Page number")
 	cmd.Flags().IntVar(&pageSize, "page-size", 0, "Items per page (max 20)")

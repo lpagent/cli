@@ -21,6 +21,7 @@ func NewTokenCmd() *cobra.Command {
 func newTokenBalanceCmd() *cobra.Command {
 	var (
 		owner string
+		chain string
 		ca    string
 	)
 
@@ -28,7 +29,8 @@ func newTokenBalanceCmd() *cobra.Command {
 		Use:   "balance",
 		Short: "Get token balances for a wallet",
 		Example: `  lpagent token balance --owner 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM
-  lpagent token balance --owner <addr> --ca So11111111111111111111111111111111111111112 -o table`,
+  lpagent token balance --owner <addr> --ca So11111111111111111111111111111111111111112 -o table
+  lpagent token balance --chain ROBINHOOD --owner 0xYourWallet -o table`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 			resolved, err := app.Config.ResolveOwner(owner)
@@ -38,6 +40,7 @@ func newTokenBalanceCmd() *cobra.Command {
 
 			params := map[string]string{
 				"owner": resolved,
+				"chain": chain,
 			}
 			if ca != "" {
 				params["ca"] = ca
@@ -60,6 +63,7 @@ func newTokenBalanceCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&owner, "owner", "", "Wallet address (required)")
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network: SOL or ROBINHOOD")
 	cmd.Flags().StringVar(&ca, "ca", "", "Comma-separated token addresses to filter")
 
 	return cmd
