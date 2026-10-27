@@ -21,10 +21,10 @@ var (
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "lpagent",
-		Short: "LP Agent CLI — manage Solana LP positions from the terminal",
+		Short: "LP Agent CLI - manage Solana and Robinhood LP positions from the terminal",
 		Long: `LP Agent CLI is a command-line interface for the LP Agent Open API.
-It provides access to LP position management, pool discovery, and
-transaction generation for Solana DeFi protocols.
+It tracks LP positions and discovers pools on Solana and Robinhood Chain,
+and generates liquidity and fee-claim transactions on Solana.
 
 Get started:
   lpagent auth set-key              Set your API key

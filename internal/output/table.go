@@ -230,12 +230,12 @@ func FormatUSD(v any) string {
 	return fmt.Sprintf("$%.2f", f)
 }
 
-func FormatSOL(v any) string {
+func FormatNative(v any, symbol string) string {
 	f, ok := toFloat(v)
 	if !ok {
 		return "-"
 	}
-	return fmt.Sprintf("%.4f SOL", f)
+	return fmt.Sprintf("%.4f %s", f, symbol)
 }
 
 func TruncAddr(s string, prefixLen, suffixLen int) string {

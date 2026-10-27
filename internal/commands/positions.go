@@ -35,6 +35,7 @@ func NewPositionsCmd() *cobra.Command {
 func newPositionsOpeningCmd() *cobra.Command {
 	var (
 		owner  string
+		chain  string
 		native bool
 	)
 
@@ -44,7 +45,8 @@ func newPositionsOpeningCmd() *cobra.Command {
 		Short:   "List open LP positions for an owner",
 		Example: `  lpagent positions open --owner 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM
   lpagent positions open -o table
-  lpagent positions open -o table --native`,
+  lpagent positions open -o table --native
+  lpagent positions open --chain ROBINHOOD --owner 0xYourWallet -o table`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 			resolved, err := app.Config.ResolveOwner(owner)
@@ -54,6 +56,7 @@ func newPositionsOpeningCmd() *cobra.Command {
 
 			data, err := app.Client.Get("/lp-positions/opening", map[string]string{
 				"owner": resolved,
+				"chain": chain,
 			})
 			if err != nil {
 				return err
@@ -75,10 +78,10 @@ func newPositionsOpeningCmd() *cobra.Command {
 			output.PrintWithOpts(data, app.Format, &output.TableOptions{
 				Columns: columns,
 				RowFunc: func(row map[string]any) []string {
-					return formatOpeningRow(row, native)
+					return formatOpeningRow(row, native, nativeSymbol(chain))
 				},
 				SummaryFunc: func(rows []map[string]any) string {
-					return formatOpeningSummary(rows, native)
+					return formatOpeningSummary(rows, native, nativeSymbol(chain))
 				},
 			})
 			return nil
@@ -86,14 +89,15 @@ func newPositionsOpeningCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&owner, "owner", "", "Wallet address of the position owner")
-	cmd.Flags().BoolVar(&native, "native", false, "Show values in native token (SOL) instead of USD")
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network: SOL or ROBINHOOD")
+	cmd.Flags().BoolVar(&native, "native", false, "Show values in native token (SOL on Solana, ETH on Robinhood) instead of USD")
 	return cmd
 }
 
-func formatOpeningRow(row map[string]any, native bool) []string {
+func formatOpeningRow(row map[string]any, native bool, symbol string) []string {
 	// Pair
 	pairName := fmt.Sprintf("%v", row["pairName"])
-	tokenName1 := "SOL"
+	tokenName1 := symbol
 	if t1, ok := row["token1Info"].(map[string]any); ok {
 		if sym, ok := t1["token_symbol"].(string); ok {
 			tokenName1 = sym
@@ -124,7 +128,7 @@ func formatOpeningRow(row map[string]any, native bool) []string {
 	// Value
 	var value string
 	if native {
-		value = output.FormatSOL(row["valueNative"])
+		value = output.FormatNative(row["valueNative"], symbol)
 	} else {
 		value = output.FormatUSD(row["value"])
 	}
@@ -132,7 +136,7 @@ func formatOpeningRow(row map[string]any, native bool) []string {
 	// Claimed Fee
 	var claimedFee string
 	if native {
-		claimedFee = output.FormatFloat(row["collectedFeeNative"], 2) + " SOL"
+		claimedFee = output.FormatFloat(row["collectedFeeNative"], 2) + " " + symbol
 	} else {
 		claimedFee = output.FormatUSD(row["collectedFee"])
 	}
@@ -140,7 +144,7 @@ func formatOpeningRow(row map[string]any, native bool) []string {
 	// Unclaim Fee
 	var unclaimFee string
 	if native {
-		unclaimFee = output.FormatFloat(row["unCollectedFeeNative"], 2) + " SOL"
+		unclaimFee = output.FormatFloat(row["unCollectedFeeNative"], 2) + " " + symbol
 	} else {
 		unclaimFee = output.FormatUSD(row["unCollectedFee"])
 	}
@@ -152,7 +156,7 @@ func formatOpeningRow(row map[string]any, native bool) []string {
 	if native {
 		pnlVal, _ = output.ToFloatPublic(safeGet(pnlMap, "valueNative"))
 		pnlPct, _ := output.ToFloatPublic(safeGet(pnlMap, "percentNative"))
-		pnlValueStr = fmt.Sprintf("%.2f SOL", pnlVal)
+		pnlValueStr = fmt.Sprintf("%.2f %s", pnlVal, symbol)
 		pnlPctStr = fmt.Sprintf("(%.2f%%)", pnlPct)
 	} else {
 		pnlVal, _ = output.ToFloatPublic(safeGet(pnlMap, "value"))
@@ -183,7 +187,7 @@ func formatOpeningRow(row map[string]any, native bool) []string {
 	return []string{displayPair, pool, age, value, claimedFee, unclaimFee, upnl, dpr, inRange, protocol}
 }
 
-func formatOpeningSummary(rows []map[string]any, native bool) string {
+func formatOpeningSummary(rows []map[string]any, native bool, symbol string) string {
 	var totalValue, totalUPnL, totalPnLPct, totalClaimed, totalUnclaimed float64
 	for _, row := range rows {
 		if native {
@@ -234,10 +238,10 @@ func formatOpeningSummary(rows []map[string]any, native bool) string {
 
 	var valStr, upnlStr, claimedStr, unclaimedStr string
 	if native {
-		valStr = fmt.Sprintf("%.4f SOL", totalValue)
-		upnlStr = fmt.Sprintf("%.2f SOL (%.2f%%)", totalUPnL, totalPnLPct)
-		claimedStr = fmt.Sprintf("%.2f SOL", totalClaimed)
-		unclaimedStr = fmt.Sprintf("%.2f SOL", totalUnclaimed)
+		valStr = fmt.Sprintf("%.4f %s", totalValue, symbol)
+		upnlStr = fmt.Sprintf("%.2f %s (%.2f%%)", totalUPnL, symbol, totalPnLPct)
+		claimedStr = fmt.Sprintf("%.2f %s", totalClaimed, symbol)
+		unclaimedStr = fmt.Sprintf("%.2f %s", totalUnclaimed, symbol)
 	} else {
 		valStr = output.FormatUSD(totalValue)
 		upnlStr = fmt.Sprintf("%s (%.2f%%)", output.FormatUSD(totalUPnL), totalPnLPct)
@@ -247,6 +251,14 @@ func formatOpeningSummary(rows []map[string]any, native bool) string {
 
 	upnlStr = output.ColorBySign(upnlStr, totalUPnL)
 	return fmt.Sprintf("Total\t\t\t%s\t%s\t%s\t%s\t\t\t", valStr, claimedStr, unclaimedStr, upnlStr)
+}
+
+// nativeSymbol is the chain's native token, the unit of every *Native field.
+func nativeSymbol(chain string) string {
+	if strings.EqualFold(chain, "ROBINHOOD") {
+		return "ETH"
+	}
+	return "SOL"
 }
 
 func safeGet(m map[string]any, key string) any {
@@ -259,6 +271,7 @@ func safeGet(m map[string]any, key string) any {
 func newPositionsHistoricalCmd() *cobra.Command {
 	var (
 		owner    string
+		chain    string
 		fromDate string
 		toDate   string
 		page     int
@@ -269,7 +282,8 @@ func newPositionsHistoricalCmd() *cobra.Command {
 		Use:   "historical",
 		Short: "List historical (closed) LP positions",
 		Example: `  lpagent positions historical --owner 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM
-  lpagent positions historical --owner <addr> --from 2025-01-01 --to 2025-09-01 --limit 50`,
+  lpagent positions historical --owner <addr> --from 2025-01-01 --to 2025-09-01 --limit 50
+  lpagent positions historical --chain ROBINHOOD --owner 0xYourWallet`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 			resolved, err := app.Config.ResolveOwner(owner)
@@ -279,6 +293,7 @@ func newPositionsHistoricalCmd() *cobra.Command {
 
 			params := map[string]string{
 				"owner": resolved,
+				"chain": chain,
 			}
 			if fromDate != "" {
 				params["from_date"] = fromDate
@@ -290,7 +305,7 @@ func newPositionsHistoricalCmd() *cobra.Command {
 				params["page"] = strconv.Itoa(page)
 			}
 			if limit > 0 {
-				params["limit"] = strconv.Itoa(limit)
+				params["pageSize"] = strconv.Itoa(limit)
 			}
 
 			data, err := app.Client.Get("/lp-positions/historical", params)
@@ -311,6 +326,7 @@ func newPositionsHistoricalCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&owner, "owner", "", "Wallet address")
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network: SOL or ROBINHOOD")
 	cmd.Flags().StringVar(&fromDate, "from", "", "Start date (ISO 8601)")
 	cmd.Flags().StringVar(&toDate, "to", "", "End date (ISO 8601)")
 	cmd.Flags().IntVar(&page, "page", 0, "Page number")
@@ -321,6 +337,7 @@ func newPositionsHistoricalCmd() *cobra.Command {
 func newPositionsOverviewCmd() *cobra.Command {
 	var (
 		owner    string
+		chain    string
 		protocol string
 		native   bool
 	)
@@ -329,7 +346,8 @@ func newPositionsOverviewCmd() *cobra.Command {
 		Use:   "overview",
 		Short: "Get aggregated metrics for an owner's LP activity",
 		Example: `  lpagent positions overview --owner 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM
-  lpagent positions overview --owner <addr> -o table --native`,
+  lpagent positions overview --owner <addr> -o table --native
+  lpagent positions overview --chain ROBINHOOD --owner 0xYourWallet -o table`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 			resolved, err := app.Config.ResolveOwner(owner)
@@ -337,16 +355,23 @@ func newPositionsOverviewCmd() *cobra.Command {
 				return err
 			}
 
-			data, err := app.Client.Get("/lp-positions/overview", map[string]string{
-				"owner":    resolved,
-				"protocol": protocol,
-			})
+			params := map[string]string{
+				"owner": resolved,
+				"chain": chain,
+			}
+			// The meteora default only means something on Solana. Elsewhere, send a
+			// protocol only when asked, so the API covers every protocol on the chain.
+			if strings.EqualFold(chain, "SOL") || cmd.Flags().Changed("protocol") {
+				params["protocol"] = protocol
+			}
+
+			data, err := app.Client.Get("/lp-positions/overview", params)
 			if err != nil {
 				return err
 			}
 
 			if app.Format == "table" {
-				printOverviewTable(data, native)
+				printOverviewTable(data, native, nativeSymbol(chain))
 				return nil
 			}
 
@@ -356,12 +381,13 @@ func newPositionsOverviewCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&owner, "owner", "", "Wallet address")
-	cmd.Flags().StringVar(&protocol, "protocol", "meteora", "Protocol filter")
-	cmd.Flags().BoolVar(&native, "native", false, "Show values in native token (SOL) instead of USD")
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network: SOL or ROBINHOOD")
+	cmd.Flags().StringVar(&protocol, "protocol", "meteora", "Protocol filter (on ROBINHOOD: every Uniswap version unless set)")
+	cmd.Flags().BoolVar(&native, "native", false, "Show values in native token (SOL on Solana, ETH on Robinhood) instead of USD")
 	return cmd
 }
 
-func printOverviewTable(data json.RawMessage, native bool) {
+func printOverviewTable(data json.RawMessage, native bool, symbol string) {
 	var resp struct {
 		Status string           `json:"status"`
 		Data   []map[string]any `json:"data"`
@@ -387,7 +413,7 @@ func printOverviewTable(data json.RawMessage, native bool) {
 
 	fmtVal := func(v float64) string {
 		if native {
-			return fmt.Sprintf("%.2f SOL", v)
+			return fmt.Sprintf("%.2f %s", v, symbol)
 		}
 		return output.FormatUSD(v)
 	}
@@ -479,7 +505,7 @@ func newPositionsLogsCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&position, "position", "", "Position ID (token ID)")
-	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain chain")
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain chain: SOL or ROBINHOOD")
 	cmd.Flags().StringVar(&owner, "owner", "", "Wallet address")
 	return cmd
 }
@@ -490,6 +516,7 @@ func newPositionsGetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "get",
 		Short:   "Get details for a specific position",
+		Long:    "Get details for a specific position. Works with a Solana position address or a Robinhood position ID; the chain is read from the ID.",
 		Example: `  lpagent positions get --position Ep22EwKegXis3bTC6P8JLgsHaT5J2beM2TncKe2Hmv24`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if position == "" {
@@ -516,6 +543,7 @@ func newPositionsGetCmd() *cobra.Command {
 
 func newPositionsRevenueCmd() *cobra.Command {
 	var (
+		chain    string
 		period   string
 		rangeVal string
 		protocol string
@@ -530,7 +558,9 @@ func newPositionsRevenueCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 
-			params := map[string]string{}
+			params := map[string]string{
+				"chain": chain,
+			}
 			if period != "" {
 				params["period"] = period
 			}
@@ -551,6 +581,7 @@ func newPositionsRevenueCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network: SOL or ROBINHOOD")
 	cmd.Flags().StringVar(&period, "period", "", "Period filter")
 	cmd.Flags().StringVar(&rangeVal, "range", "", "Range filter: 7D, 1M")
 	cmd.Flags().StringVar(&protocol, "protocol", "", "Protocol filter")

@@ -58,6 +58,7 @@ func newPoolsDiscoverCmd() *cobra.Command {
 		Short: "Discover and filter liquidity pools",
 		Example: `  lpagent pools discover
   lpagent pools discover --chain SOL --sort-by tvl --page-size 20 -o table
+  lpagent pools discover --chain ROBINHOOD --sort-by tvl -o table
   lpagent pools discover --search "SOL" --min-liquidity 10000`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -137,7 +138,7 @@ func newPoolsDiscoverCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network")
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network: SOL or ROBINHOOD")
 	cmd.Flags().StringVar(&sortBy, "sort-by", "mcap", "Sort by: mcap, created_at, vol_24h, tvl, fee_tvl_ratio, volatility")
 	cmd.Flags().StringVar(&sortOrder, "sort-order", "desc", "Sort order: asc, desc")
 	cmd.Flags().IntVar(&page, "page", 1, "Page number")
@@ -185,6 +186,7 @@ func newPoolsInfoCmd() *cobra.Command {
 func newPoolsPositionsCmd() *cobra.Command {
 	var (
 		owner     string
+		chain     string
 		status    string
 		page      int
 		pageSize  int
@@ -202,7 +204,9 @@ func newPoolsPositionsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 
-			params := map[string]string{}
+			params := map[string]string{
+				"chain": chain,
+			}
 			if owner != "" {
 				params["owner"] = owner
 			}
@@ -242,6 +246,7 @@ func newPoolsPositionsCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&owner, "owner", "", "Filter by wallet address")
+	cmd.Flags().StringVar(&chain, "chain", "SOL", "Blockchain network: SOL or ROBINHOOD")
 	cmd.Flags().StringVar(&status, "status", "", "Filter by status: Open, Close")
 	cmd.Flags().IntVar(&page, "page", 0, "Page number")
 	cmd.Flags().IntVar(&pageSize, "page-size", 0, "Items per page (max 20)")

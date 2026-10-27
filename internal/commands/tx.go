@@ -14,13 +14,15 @@ import (
 func NewTxCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tx",
-		Short: "Position transaction operations (zap-out)",
+		Short: "Position transaction operations (zap-out, claim fees)",
 	}
 
 	cmd.AddCommand(
 		newTxZapOutEstimatesCmd(),
 		newTxDecreaseTxCmd(),
 		newTxLandingDecreaseTxCmd(),
+		newTxClaimFeeTxCmd(),
+		newTxLandingClaimFeeTxCmd(),
 	)
 
 	return cmd
@@ -41,9 +43,9 @@ func newTxZapOutEstimatesCmd() *cobra.Command {
 		Aliases: []string{"decrease-quotes"},
 		Short:   "Estimate what withdrawing liquidity pays out, per output option",
 		Long: `Estimates each decrease-tx output option (allToken0, allToken1, both, allBaseToken):
-what the wallet ends up with after the swap and LP Agent's fee, priced on the
-same route decrease-tx uses, plus the market value / swap cost / fee split.
-Run it before decrease-tx to see the real payout. Meteora DLMM only.`,
+what the wallet ends up with after the swap and fees, priced on the same route
+decrease-tx uses, next to the same withdrawal valued at the pool price before any
+swap. Run it before decrease-tx to see the real payout. Meteora DLMM only.`,
 		Example: `  lpagent tx zap-out-estimates --position-id <id> --bps 10000
   lpagent tx zap-out-estimates --position-id <id> --bps 10000 --payouts allToken1 -o table`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -98,8 +100,6 @@ type zapOutEstimate struct {
 	} `json:"receive"`
 	ValueUsd       float64  `json:"valueUsd"`
 	MarketValueUsd float64  `json:"marketValueUsd"`
-	CommissionUsd  float64  `json:"commissionUsd"`
-	SwapCostUsd    float64  `json:"swapCostUsd"`
 	PriceImpactPct *float64 `json:"priceImpactPct"`
 }
 
@@ -119,8 +119,7 @@ func printZapOutEstimates(data []byte) {
 		{Header: "YOU GET"},
 		{Header: "VALUE"},
 		{Header: "MARKET"},
-		{Header: "SWAP COST"},
-		{Header: "FEE"},
+		{Header: "EXIT COST"},
 		{Header: "IMPACT"},
 	}
 	var rows [][]string
@@ -142,8 +141,9 @@ func printZapOutEstimates(data []byte) {
 			strings.Join(parts, " + "),
 			fmt.Sprintf("$%.2f", e.ValueUsd),
 			fmt.Sprintf("$%.2f", e.MarketValueUsd),
-			fmt.Sprintf("$%.2f", e.SwapCostUsd),
-			fmt.Sprintf("$%.2f", e.CommissionUsd),
+			// The estimate gives the payout and the pool-price value, not a split
+			// of what lies between them: swap and fees show up as one total.
+			fmt.Sprintf("$%.2f", e.MarketValueUsd-e.ValueUsd),
 			impact,
 		})
 	}
@@ -253,6 +253,101 @@ func newTxLandingDecreaseTxCmd() *cobra.Command {
 			}
 
 			data, err := app.Client.Post("/position/landing-decrease-tx", body)
+			if err != nil {
+				return err
+			}
+
+			output.Print(data, app.Format, nil)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&file, "file", "", "Path to JSON file (use - for stdin)")
+	_ = cmd.MarkFlagRequired("file")
+
+	return cmd
+}
+
+func newTxClaimFeeTxCmd() *cobra.Command {
+	var (
+		positionId  string
+		owner       string
+		slippageBps int
+		swapToSol   bool
+		provider    string
+		poolType    string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "claim-fee-tx",
+		Short: "Generate transactions to claim a position's unclaimed fees",
+		Long: `Generates serialized claim-fee transactions for a Meteora DLMM or DAMM V2 position.
+The position stays open. With --swap-to-sol, also returns swap transactions that turn
+the claimed fees into SOL. Sign them and submit with landing-claim-fee-tx.`,
+		Example: `  lpagent tx claim-fee-tx --position-id <id> --owner <addr>
+  lpagent tx claim-fee-tx --position-id <id> --owner <addr> --swap-to-sol --slippage-bps 300`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if positionId == "" {
+				return fmt.Errorf("--position-id is required")
+			}
+
+			app := appctx.FromContext(cmd.Context())
+			resolvedOwner, err := app.Config.ResolveOwner(owner)
+			if err != nil {
+				return err
+			}
+
+			body := map[string]any{
+				"position_id":  positionId,
+				"owner":        resolvedOwner,
+				"slippage_bps": slippageBps,
+				"swapToNative": swapToSol,
+				"type":         poolType,
+			}
+			if provider != "" {
+				body["provider"] = provider
+			}
+
+			data, err := app.Client.Post("/position/claim-fee-tx", body)
+			if err != nil {
+				return err
+			}
+
+			output.Print(data, app.Format, nil)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&positionId, "position-id", "", "Position ID (required)")
+	cmd.Flags().StringVar(&owner, "owner", "", "Owner wallet address")
+	cmd.Flags().IntVar(&slippageBps, "slippage-bps", 500, "Slippage tolerance in basis points for --swap-to-sol (0-10000)")
+	cmd.Flags().BoolVar(&swapToSol, "swap-to-sol", false, "Also return swap transactions that turn the claimed fees into SOL")
+	cmd.Flags().StringVar(&provider, "provider", "", "Swap provider for --swap-to-sol: OKX, JUPITER_ULTRA")
+	cmd.Flags().StringVar(&poolType, "type", "meteora", "Pool type: meteora, meteora_damm_v2")
+
+	return cmd
+}
+
+func newTxLandingClaimFeeTxCmd() *cobra.Command {
+	var file string
+
+	cmd := &cobra.Command{
+		Use:   "landing-claim-fee-tx",
+		Short: "Submit signed claim-fee transactions via Jito",
+		Long: `Submit signed claim-fee transactions, and the swap-to-SOL ones when built with
+--swap-to-sol, via Jito bundles for on-chain execution. The JSON file holds
+lastValidBlockHeight, claimTxsWithJito and swapTxsWithJito from claim-fee-tx, signed.`,
+		Example: `  lpagent tx landing-claim-fee-tx --file signed-tx.json
+  cat signed-tx.json | lpagent tx landing-claim-fee-tx --file -`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			app := appctx.FromContext(cmd.Context())
+
+			body, err := readJSONInput(file)
+			if err != nil {
+				return err
+			}
+
+			data, err := app.Client.Post("/position/landing-claim-fee-tx", body)
 			if err != nil {
 				return err
 			}
